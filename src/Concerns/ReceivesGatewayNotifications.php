@@ -19,7 +19,7 @@ trait ReceivesGatewayNotifications
 
     public function routeNotificationForGatewaySms(): ?string
     {
-        return $this->gatewayPhone();
+        return $this->gatewaySmsNumber();
     }
 
     public function routeNotificationForGatewayWhatsapp(): ?string
@@ -47,7 +47,7 @@ trait ReceivesGatewayNotifications
     }
 
     /** The first value that looks like a phone number. The gateway normalises 0999..., +265999... and 265999.... */
-    public function gatewayPhone(): ?string
+    public function gatewaySmsNumber(): ?string
     {
         foreach ($this->gatewayCandidates('phone') as $value) {
             $digits = strlen(preg_replace('/\D+/', '', $value));

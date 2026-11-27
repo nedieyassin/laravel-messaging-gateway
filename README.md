@@ -114,7 +114,7 @@ If your columns match the defaults, you're done. Otherwise, override the resolve
 | Method                    | Returns    | Used by                                                                      |
 |---------------------------|------------|------------------------------------------------------------------------------|
 | `gatewayEmail()`          | `?string`  | Email                                                                        |
-| `gatewayPhone()`          | `?string`  | SMS (and WhatsApp when there's no separate number)                           |
+| `gatewaySmsNumber()`      | `?string`  | SMS (and WhatsApp when there's no separate number)                           |
 | `gatewayWhatsAppNumber()` | `?string`  | WhatsApp. Falls back to `gatewayPhone()`.                                    |
 | `gatewayFcmTokens()`      | `string[]` | Push                                                                         |
 | `gatewayTenantId()`       | `?string`  | Tags every message with a tenant (see [Tenants and refs](#tenants-and-refs)) |
@@ -124,7 +124,12 @@ class User extends Authenticatable
 {
     use Notifiable, ReceivesGatewayNotifications;
 
-    public function gatewayPhone(): ?string
+    public function gatewaySmsNumber(): ?string
+    {
+        return $this->mobile_number;
+    }
+    
+    public function gatewayWhatsAppNumber(): ?string
     {
         return $this->mobile_number;
     }
