@@ -57,7 +57,7 @@ final class WhatsAppMessage
     /** Named body variables: ['guardian_name' => 'John']. For authentication templates: ['code' => '482913']. */
     public function params(array $params): WhatsAppMessage
     {
-        $this->params = [...$this->params, ...$params];
+        $this->params = array_replace($this->params, $params);
         return $this;
     }
 
