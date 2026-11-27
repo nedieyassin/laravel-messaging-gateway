@@ -15,7 +15,7 @@ return [
      * Where the ReceivesGatewayNotifications trait looks, in order. Each entry is a path read with
      * data_get() on the model: an attribute ('phone'), a JSON/array attribute ('fcm_tokens'), or a relation
      * with a wildcard ('devices.*.token'). The first valid email / phone wins; every token is used.
-     * A model can also override gatewayEmail(), gatewayPhone(), gatewayWhatsAppNumber(),
+     * A model can also override gatewayEmail(), gatewaySmsNumber(), gatewayWhatsAppNumber(),
      * gatewayFcmTokens() and gatewayTenantId().
      */
     'resolvers' => [
