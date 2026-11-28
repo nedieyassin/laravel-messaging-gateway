@@ -401,6 +401,99 @@ Event::listen(NotificationSent::class, function (NotificationSent $event) {
 });
 ```
 
+## Multi-tenant credentials
+
+In a system where each tenant (school, company, branch) has its own gateway client, the token can't live in `.env` alone. The package resolves the token **at the moment a message is sent**, so it is also correct in queued notifications: the job runs in your worker, your tenancy package has restored the tenant, and the token is looked up then. It is never stored in the queued job.
+
+### Ways to supply credentials
+
+Pick the one that fits. They are checked in this order, and the first one that gives a token wins.
+
+| # | Where                                                                                       | Best for                                                                                |
+|---|---------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| 1 | `gatewayCredentials($notifiable)` on the **notification**                                   | One notification that always uses a specific client                                     |
+| 2 | `gatewayCredentials()` on the **notifiable** (the trait reads `resolvers.token` by default) | The token belongs to the recipient's tenant, such as `$guardian->school->gateway_token` |
+| 3 | `Gateway::withCredentials($token, fn () => ...)`                                            | A scope around a block of code                                                          |
+| 4 | `Gateway::resolveCredentialsUsing(fn ...)` (global)                                         | The **current tenant**: the usual answer for tenancy packages                           |
+| 5 | `GATEWAY_TOKEN` in `.env`                                                                   | A default (for example, your own system's client)                                       |
+
+**1. The current tenant (global resolver).** Register it once in a service provider's `boot()`:
+
+```php
+use Illuminate\Notifications\Notification;
+use MessagingGateway\Facades\Gateway;
+
+Gateway::resolveCredentialsUsing(function (?object $notifiable, ?Notification $notification) {
+    return tenant()?->gateway_token;          // stancl/tenancy
+    // return Tenant::current()?->gateway_token;   // spatie/laravel-multitenancy
+});
+```
+
+The callback returns a token string, `['token' => ..., 'url' => ...]`, a `GatewayCredentials`, or `null`. It is also called for direct `Gateway::` calls, with both arguments `null`.
+
+**2. The notifiable.** Point the trait at the right place with config, or override the method:
+
+```php
+// config/gateway.php
+'resolvers' => ['token' => 'school.gateway_token'],   // read with data_get() on the model
+
+// or on the model
+public function gatewayCredentials(): GatewayCredentials|string|null
+{
+    return $this->school->gateway_token;
+}
+```
+
+**3. The notification.** With the `UsesGatewayChannels` trait you can either hand it the token when you send:
+
+```php
+$guardian->notify((new FeeReminder($invoice))->usingGatewayCredentials($school->gateway_token));
+```
+
+or have it look the token up when it is sent:
+
+```php
+protected function resolveGatewayCredentials(object $notifiable): ?string
+{
+    return $this->invoice->school->gateway_token;
+}
+```
+
+`usingGatewayCredentials()` accepts a token string, `['token' => ..., 'url' => ...]`, or a `GatewayCredentials`. The token is stored **encrypted** on the notification, so it is safe in a queued job. It requires the web app and the queue workers to share the same `APP_KEY`, and it is fixed at the moment you call it. Use `resolveGatewayCredentials()` when it must be read at send time (for example if tenants rotate tokens). A notification
+that doesn't use the trait can define `gatewayCredentials(object $notifiable)` itself.
+
+**4. Explicit or scoped.**
+
+```php
+// a client bound to a token
+Gateway::using($school->gateway_token)->sendSms('0999123456', SmsMessage::make('Hello'));
+Gateway::using($token, 'https://gateway-2.example.com')->message($id);   // different gateway URL
+
+// everything inside the callback, notifications included
+Gateway::withCredentials($school->gateway_token, function () use ($guardian) {
+    $guardian->notify(new FeeReminder($invoice));
+});
+```
+
+**Anonymous notifiables** (`Notification::route(...)`) have no model to read a token from. Use the notification's `gatewayCredentials()`, a scope, or the global resolver.
+
+### Make a missing token an error
+
+If nothing resolves a token, the package uses `GATEWAY_TOKEN`. In a multi-tenant system that would send as the wrong client (and bill it). Turn the fallback off:
+
+```
+GATEWAY_USE_DEFAULT=false
+```
+
+Then a send with no resolved credentials throws `GatewayException` with code `NO_CREDENTIALS` (not retryable) before anything is sent.
+
+### Rules for queued notifications
+
+- **Don't put the token in the notification's constructor or properties.** Queued notifications are serialized into the queue. Return the token from `gatewayCredentials()` or the resolver, so it is read when the job runs. `GatewayCredentials` objects refuse to be serialized to catch this, but a plain string would not be caught.
+- **The resolver must read the tenant at call time.** `tenant()` and `Tenant::current()` already do, as long as your tenancy package restores the tenant for queued jobs. Stancl's `QueueTenancyBootstrapper` and Spatie's tenant-aware jobs both do. Check that yours does.
+- **Store tokens encrypted** in your tenant tables (`'gateway_token' => 'encrypted'` in the model's `casts`).
+- With **Octane on Swoole**, `withCredentials()` is not safe across concurrent coroutines. Use `Gateway::using()` or the resolver there.
+
 ## Errors
 
 Failed requests throw `MessagingGateway\Exceptions\GatewayException`:

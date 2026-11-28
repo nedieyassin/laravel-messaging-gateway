@@ -7,11 +7,17 @@ use Illuminate\Support\Arr;
 use LogicException;
 use Nedieyassin\MessagingGateway\Enums\Channel;
 use Nedieyassin\MessagingGateway\GatewayClient;
+use Nedieyassin\MessagingGateway\GatewayManager;
 
 abstract readonly class GatewayChannel
 {
-    public function __construct(protected GatewayClient $client)
+    public function __construct(protected readonly GatewayManager $gateway)
     {
+    }
+
+    protected function client(mixed $notifiable, Notification $notification): GatewayClient
+    {
+        return $this->gateway->client(is_object($notifiable) ? $notifiable : null, $notification);
     }
 
     abstract protected function channel(): Channel;

@@ -23,11 +23,15 @@ readonly class EmailChannel extends GatewayChannel
             return null;
         }
 
+
+        $client = $this->client($notifiable, $notification);
+
+
         $message = $this->withDefaults($this->message($notifiable, $notification), $notifiable);
         return GatewayResponse::merge(Channel::EMAIL, array_map(
         /**
          * @throws \JsonException
-         */ fn(string $to) => $this->client->sendEmail($to, $message, $this->key($notification, $to)),
+         */ fn(string $to) => $client->sendEmail($to, $message, $this->key($notification, $to)),
             $addresses,
         ));
     }

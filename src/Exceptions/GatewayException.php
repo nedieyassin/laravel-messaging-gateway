@@ -44,9 +44,21 @@ class GatewayException extends RuntimeException
         return new self('Could not reach the gateway: ' . $e->getMessage(), null, 'CONNECTION', [], $e);
     }
 
-    /** Worth trying again later (network, 429, 5xx). Everything else is a problem with the request. */
+    public static function noCredentials(): self
+    {
+        return new self(
+            'No gateway credentials were resolved. Set GATEWAY_TOKEN, or register ' .
+            'Gateway::resolveCredentialsUsing(), or define gatewayCredentials() on the notifiable.',
+            null, 'NO_CREDENTIALS',
+        );
+    }
+
     public function retryable(): bool
     {
+        if ($this->errorCode === 'NO_CREDENTIALS') {
+            return false;   // retrying can't fix a missing token
+        }
+
         return $this->status === null || $this->status === 429 || $this->status >= 500;
     }
 

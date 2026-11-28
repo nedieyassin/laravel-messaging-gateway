@@ -13,11 +13,13 @@ class GatewayServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__ . '/../config/gateway.php', 'gateway');
 
         $this->app->singleton(GatewayClient::class, fn() => new GatewayClient(
-            url: (string)config('gateway.url'),
-            token: (string)config('gateway.token'),
+            url: config('gateway.url'),
+            token: config('gateway.token'),
             timeout: (int)config('gateway.timeout'),
             retries: (int)config('gateway.retries'),
         ));
+
+        $this->app->singleton(GatewayManager::class, fn($app) => new GatewayManager($app->make(GatewayClient::class)));
     }
 
     public function boot(): void

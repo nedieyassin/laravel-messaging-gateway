@@ -4,6 +4,7 @@ return [
     'url' => env('MESSAGING_GATEWAY_URL'),     // e.g. https://gateway.example.com
     'token' => env('MESSAGING_GATEWAY_TOKEN'), // the client token (gw_...)
     'timeout' => env('MESSAGING_GATEWAY_TIMEOUT', 15),
+    'use_default_credentials' => env('MESSAGING_GATEWAY_USE_DEFAULT', true),
 
     // Attempts for a request that fails to connect. Only requests carrying an idempotency key are retried.
     'retries' => 3,
@@ -19,6 +20,8 @@ return [
      * gatewayFcmTokens() and gatewayTenantId().
      */
     'resolvers' => [
+        'token' => null,                 // path on the notifiable, e.g. 'school.gateway_token'
+        'url' => null,                   // only if tenants use different gateways
         'email' => ['email'],
         'phone' => ['phone', 'phone_number', 'mobile'],
         'whatsapp' => [],                // empty = use the phone

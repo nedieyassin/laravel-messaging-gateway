@@ -5,7 +5,6 @@ namespace Nedieyassin\MessagingGateway;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
-use InvalidArgumentException;
 use Nedieyassin\MessagingGateway\Enums\Channel;
 use Nedieyassin\MessagingGateway\Enums\WhatsAppType;
 use Nedieyassin\MessagingGateway\Exceptions\GatewayException;
@@ -22,15 +21,18 @@ use Nedieyassin\MessagingGateway\Support\Json;
 final readonly class GatewayClient
 {
     public function __construct(
-        private string $url,
-        private string $token,
-        private int    $timeout = 15,
-        private int    $retries = 3,
+        private readonly ?string $url = null,
+        private readonly ?string $token = null,
+        private readonly int     $timeout = 15,
+        private readonly int     $retries = 3,
     )
     {
-        if ($url === '' || $token === '') {
-            throw new InvalidArgumentException('Set GATEWAY_URL and GATEWAY_TOKEN.');
-        }
+    }
+
+    /** The same client, bound to other credentials. */
+    public function for(GatewayCredentials $credentials): GatewayClient
+    {
+        return new GatewayClient($credentials->url ?? $this->url, $credentials->token, $this->timeout, $this->retries);
     }
 
     // ---------- sending ----------
@@ -180,7 +182,11 @@ final readonly class GatewayClient
 
     private function http(): PendingRequest
     {
-        return Http::baseUrl(rtrim($this->url, '/') . '/v1')
+        if (! $this->url || ! $this->token) {
+            throw GatewayException::noCredentials();
+        }
+
+        return Http::baseUrl(rtrim($this->url, '/').'/v1')
             ->withToken($this->token)
             ->acceptJson()
             ->timeout($this->timeout)

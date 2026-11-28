@@ -3,6 +3,7 @@
 namespace Nedieyassin\MessagingGateway\Concerns;
 
 use Illuminate\Support\Arr;
+use Nedieyassin\MessagingGateway\GatewayCredentials;
 
 /**
  * Add to any notifiable model (next to Notifiable). Resolves where to send from config('gateway.resolvers'),
@@ -84,6 +85,19 @@ trait ReceivesGatewayNotifications
         $value = $attribute ? data_get($this, $attribute) : null;
         return $value === null || $value === '' ? null : (string)$value;
     }
+
+
+    public function gatewayCredentials(): GatewayCredentials|string|null
+    {
+        $token = ($path = config('gateway.resolvers.token')) ? data_get($this, $path) : null;
+        if (!is_string($token) || $token === '') {
+            return null;
+        }
+        $url = ($path = config('gateway.resolvers.url')) ? data_get($this, $path) : null;
+
+        return new GatewayCredentials($token, is_string($url) && $url !== '' ? $url : null);
+    }
+
 
     /** @return list<string> */
     protected function gatewayCandidates(string $kind): array

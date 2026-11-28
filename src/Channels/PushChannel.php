@@ -17,16 +17,19 @@ readonly class PushChannel extends GatewayChannel
 
     public function send(mixed $notifiable, Notification $notification): ?GatewayResponse
     {
+
         if (!$tokens = $this->routes($notifiable, $notification)) {
             return null;
         }
+
+        $client = $this->client($notifiable, $notification);
 
         $message = $this->withDefaults($this->build($notifiable, $notification, 'toGatewayPush'), $notifiable);
         $base = $this->key($notification, implode(',', $tokens));
 
         $responses = [];
         foreach (array_chunk($tokens, self::CHUNK) as $i => $chunk) {
-            $responses[] = $this->client->sendPush($chunk, $message, $base ? "{$base}:{$i}" : null);
+            $responses[] = $client->sendPush($chunk, $message, $base ? "{$base}:{$i}" : null);
         }
 
         return GatewayResponse::merge(Channel::PUSH, $responses);

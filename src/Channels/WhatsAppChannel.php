@@ -19,11 +19,14 @@ readonly class WhatsAppChannel extends GatewayChannel
             return null;
         }
 
+        $client = $this->client($notifiable, $notification);
+
+
         $message = $this->withDefaults($this->build($notifiable, $notification, 'toGatewayWhatsApp'), $notifiable);
         return GatewayResponse::merge(Channel::WHATSAPP, array_map(
         /**
          * @throws \JsonException
-         */ fn(string $number) => $this->client->sendWhatsApp($number, $message, $this->key($notification, $number)),
+         */ fn(string $number) => $client->sendWhatsApp($number, $message, $this->key($notification, $number)),
             $numbers,
         ));
     }

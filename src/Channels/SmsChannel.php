@@ -16,15 +16,20 @@ readonly class SmsChannel extends GatewayChannel
 
     public function send(mixed $notifiable, Notification $notification): ?GatewayResponse
     {
+
+
         if (!$numbers = $this->routes($notifiable, $notification)) {
             return null;
         }
+
+        $client = $this->client($notifiable, $notification);
+
         $message = $this->build($notifiable, $notification, 'toGatewaySms');
         $message = $message instanceof SmsMessage ? $message : SmsMessage::make((string)$message);
         $this->withDefaults($message, $notifiable);
         if (count($numbers) === 1) {
-            return $this->client->sendSms($numbers[0], $message, $this->key($notification, $numbers[0]));
+            return $client->sendSms($numbers[0], $message, $this->key($notification, $numbers[0]));
         }
-        return $this->client->sendSmsBulk($numbers, $message, $this->key($notification, implode(',', $numbers)));
+        return $client->sendSmsBulk($numbers, $message, $this->key($notification, implode(',', $numbers)));
     }
 }
